@@ -5,7 +5,7 @@
 1. Clone the repository
 
 ```bash
-git clone git@gitlab.uk-essen.de:ship-ai/services/app-boa-api.git
+git clone git@github.com:JannisStraus/app-boa-api.git
 ```
 
 2. Build docker image
