@@ -2,13 +2,13 @@
 
 ## Usage
 
-1. Clone the repository.
+1. Clone the repository
 
 ```bash
 git clone git@gitlab.uk-essen.de:ship-ai/services/app-boa-api.git
 ```
 
-2. Build docker image.
+2. Build docker image
 ```bash
 docker compose build
 ```
