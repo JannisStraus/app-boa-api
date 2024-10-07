@@ -1,0 +1,2 @@
+class DicomWebError(IOError):
+    pass

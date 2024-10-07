@@ -1,0 +1,83 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+#    network_mode: host
+    ports:
+      - "15672:15672"
+
+  minio:
+    image: minio/minio
+    environment:
+      - MINIO_ROOT_USER=$S3_ACCESS_KEY_ID
+      - MINIO_ROOT_PASSWORD=$S3_SECRET_ACCESS_KEY
+#    network_mode: host
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: ["server", "/data", "--console-address", ":9001"]
+
+  api:
+    build:
+      context: .
+      args:
+        GITLAB_PYPI_USERNAME: $GITLAB_PYPI_USERNAME
+        GITLAB_PYPI_PASSWORD: $GITLAB_PYPI_PASSWORD
+    environment:
+      - CELERY_BROKER
+      - S3_ACCESS_KEY_ID
+      - S3_SECRET_ACCESS_KEY
+      - S3_ENDPOINT_URL
+      - S3_BUCKET
+      - SHIP_URL
+#    network_mode: host
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/src
+    command: ["uvicorn", "boa_ai.api:app", "--reload", "--host", "0.0.0.0"]
+    depends_on:
+    - rabbitmq
+    - minio
+
+  worker:
+    build:
+      context: .
+      args:
+        GITLAB_PYPI_USERNAME: $GITLAB_PYPI_USERNAME
+        GITLAB_PYPI_PASSWORD: $GITLAB_PYPI_PASSWORD
+    environment:
+      - CELERY_BROKER
+      - S3_ACCESS_KEY_ID
+      - S3_SECRET_ACCESS_KEY
+      - S3_ENDPOINT_URL
+      - S3_BUCKET
+      - SHIP_URL
+      - nnUNet_USE_TRITON
+      - TRITON_URL
+#    network_mode: host
+    volumes:
+      - ./src:/src
+    command: ["python3", "-m", "celery", "-A", "boa_ai.worker.tasks", "worker", "--concurrency=1", "--loglevel=INFO"]
+    depends_on:
+    - rabbitmq
+    - minio
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:22.12-py3
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1,2  # todo 0
+    shm_size: 1g
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    ports:
+      - "8081:8001"
+    volumes:
+      - /local/work/janstraus/models/onnx_boav1:/models
+    command:
+      [
+        "tritonserver",
+        "--log-verbose=1",
+        "--model-repository=/models"
+      ]
